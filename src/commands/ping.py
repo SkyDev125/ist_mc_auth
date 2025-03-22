@@ -1,10 +1,10 @@
-from discord.ext.commands import Bot
-from discord.ext.commands.context import Context
+import discord
+from discord.ext import commands
 
 
-def setup(bot: Bot) -> None:
-    @bot.command()
-    async def ping(ctx: Context[Bot]) -> None:
-        await ctx.send("🏓 Pong from Skythentic!")
+def setup(bot: commands.Bot) -> None:
+    @bot.tree.command(name="ping", description="Ping command")
+    async def ping(interaction: discord.Interaction) -> None:
+        await interaction.response.send_message("🏓 Pong from Skythentic!")
 
     _ = ping  # Silence unaccessed function warning
