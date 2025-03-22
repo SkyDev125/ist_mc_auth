@@ -1,9 +1,11 @@
 from discord.ext.commands import Bot
 import discord
+from beartype import beartype
 
 from os import getenv
 
 
+@beartype
 def setup(bot: Bot) -> None:
     @bot.event
     async def on_ready() -> None:

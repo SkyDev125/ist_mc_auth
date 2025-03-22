@@ -1,7 +1,9 @@
 import discord
 from discord.ext import commands
+from beartype import beartype
 
 
+@beartype
 def setup(bot: commands.Bot) -> None:
     @bot.tree.command(name="ping", description="Ping command")
     async def ping(interaction: discord.Interaction) -> None:

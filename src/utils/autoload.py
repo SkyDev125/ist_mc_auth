@@ -2,8 +2,10 @@ import importlib.util
 import importlib
 from discord.ext.commands import Bot
 from pathlib import Path
+from beartype import beartype
 
 
+@beartype
 def load_all_from(folder: Path, bot: Bot, is_event: bool = False) -> None:
     for file in folder.glob("*.py"):
         if file.name.startswith("_"):
