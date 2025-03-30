@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 
+# Import custom modules
 from dotenv import load_dotenv
 from os import getenv
 
