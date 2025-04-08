@@ -12,6 +12,15 @@ def setup(bot: commands.Bot) -> None:
     async def auth(interaction: discord.Interaction) -> None:
         """Authenticate the user with the web server."""
 
+        # verify if this command is in a guild
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "This command can only be used in a server.",
+                ephemeral=True,
+                delete_after=DEFAULT_MESSAGE_DELETE_DELAY,
+            )
+            return
+
         # if the user already exists in the database
         try:
             db.search_discord_id(str(interaction.user.id))
