@@ -13,18 +13,19 @@ import discord
 from src.db.db import db
 from src.db.player import ISTPlayer
 from src.constants import *
+from src.errors.db import *
 
 # --- Configuration (Replace with your actual values, consider using environment variables) ---
 FENIX_CLIENT_ID = os.getenv("FENIX_CLIENT_ID")
 FENIX_CLIENT_SECRET = os.getenv("FENIX_CLIENT_SECRET")
-AUTH_TIMEOUT_SECONDS = os.getenv("AUTH_TIMEOUT_SECONDS")
+IST_PLAYER_ROLE_ID = int(os.getenv("IST_PLAYER_ROLE_ID", 0))
 # Make sure this matches the Redirect URL in your FenixEdu application registration
 FENIX_REDIRECT_URI = "http://localhost:8080/callback"
 FENIX_BASE_URL = "https://fenix.tecnico.ulisboa.pt"
 ACCESS_TOKEN_PATH = "/oauth/access_token"
 PERSON_API_PATH = "/api/fenix/v1/person"
 API_REQUEST_TIMEOUT = 10
-CONNECTION_CLEANUP_TIMEOUT = 180 
+CONNECTION_CLEANUP_TIMEOUT = 180
 # --- End Configuration ---
 
 auth_connections: dict[str, discord.Interaction] = {}  # auth_id-interaction linker
@@ -275,27 +276,7 @@ async def handle_callback(request: web.Request) -> web.Response:
                 text=html_content1 + result + html_content2, content_type="text/html"
             )
 
-        # add the user to the database
-        ist_player = ISTPlayer(
-            id=user_info["username"],
-            discord_id=str(interaction.user.id),
-            minecraft_name=None,
-            invited_ids=[],
-            invite_limit=5,
-        )
-
-        try:
-            db.add_ist(ist_player)
-        except Exception as e:
-            print(f"Failed to add IST player to the database: {e}")
-            result = f"Failed to add IST player to the database: {e} \n\n If you think this is a mistake, please contact the server admins."
-            await interaction.user.send(result, delete_after=DEFAULT_MESSAGE_DELETE_DELAY)
-            return web.Response(
-                text=html_content1 + result + html_content2,
-                content_type="text/html",
-            )
-
-    # Add 1359003671031054458 role to the user
+    # Add Respective role to the user
     guild = interaction.guild
     if not guild:
         print("Guild not found. while adding ist auth role.")
@@ -305,7 +286,7 @@ async def handle_callback(request: web.Request) -> web.Response:
             text=html_content1 + result + html_content2, content_type="text/html"
         )
 
-    role = guild.get_role(1359003671031054458)
+    role = guild.get_role(IST_PLAYER_ROLE_ID) if IST_PLAYER_ROLE_ID else None
     if not role:
         print("Role not found. while adding ist auth role.")
         result = "Role not found. Cannot add role. Please contact the server admins."
@@ -331,13 +312,35 @@ async def handle_callback(request: web.Request) -> web.Response:
             text=html_content1 + result + html_content2, content_type="text/html"
         )
 
+    # add the user to the database
+    ist_player = ISTPlayer(
+        id=user_info["username"],
+        discord_id=str(interaction.user.id),
+        minecraft_name=None,
+        invited_ids=[],
+        invite_limit=5,
+    )
+
+    try:
+        db.add_ist(ist_player)
+    except Exception as e:
+        print(f"Failed to add IST player to the database: {e}")
+        result = f"Failed to add IST player to the database: {e} \n\n If you think this is a mistake, please contact the server admins."
+        await interaction.user.send(result, delete_after=DEFAULT_MESSAGE_DELETE_DELAY)
+        if not isinstance(e, PlayerAlreadyExistsError):
+            await interaction.user.add_roles(role)
+        return web.Response(
+            text=html_content1 + result + html_content2,
+            content_type="text/html",
+        )
+
+    # Success!
     await interaction.user.send(
         "Authentication successful! Welcome to the server!\n\n"
         "Use /link to link your Minecraft account if you want to play on the server.",
         delete_after=DEFAULT_MESSAGE_DELETE_DELAY,
     )
 
-    # Return the response
     return web.Response(
         text=html_content1 + result + html_content2, content_type="text/html"
     )
@@ -349,7 +352,7 @@ async def start_server(bot: commands.Bot) -> None:
     """Starts the AIOHTTP web server."""
     if not FENIX_CLIENT_ID or not FENIX_REDIRECT_URI:
         raise ValueError(
-            "FENIX_CLIENT_ID and FENIX_REDIRECT_URI must be set and not None."
+            "FENIX_CLIENT_ID and FENIX_REDIRECT_URI and IST_PLAYER_ROLE_ID must be set and not None."
         )
 
     app = web.Application()
