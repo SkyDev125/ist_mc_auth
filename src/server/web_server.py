@@ -328,7 +328,7 @@ async def handle_callback(request: web.Request) -> web.Response:
         result = f"Failed to add IST player to the database: {e} \n\n If you think this is a mistake, please contact the server admins."
         await interaction.user.send(result, delete_after=DEFAULT_MESSAGE_DELETE_DELAY)
         if not isinstance(e, PlayerAlreadyExistsError):
-            await interaction.user.add_roles(role)
+            await interaction.user.remove_roles(role)
         return web.Response(
             text=html_content1 + result + html_content2,
             content_type="text/html",
