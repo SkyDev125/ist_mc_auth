@@ -12,6 +12,7 @@ from typing import Optional
 import discord
 from src.db.db import db
 from src.db.player import ISTPlayer
+from src.constants import *
 
 # --- Configuration (Replace with your actual values, consider using environment variables) ---
 FENIX_CLIENT_ID = os.getenv("FENIX_CLIENT_ID")
@@ -22,13 +23,23 @@ FENIX_REDIRECT_URI = "http://localhost:8080/callback"
 FENIX_BASE_URL = "https://fenix.tecnico.ulisboa.pt"
 ACCESS_TOKEN_PATH = "/oauth/access_token"
 PERSON_API_PATH = "/api/fenix/v1/person"
-TIMEOUT = 10
+API_REQUEST_TIMEOUT = 10
+CONNECTION_CLEANUP_TIMEOUT = 180 
 # --- End Configuration ---
 
 auth_connections: dict[str, discord.Interaction] = {}  # auth_id-interaction linker
 auth_connections_lock = Lock()
 
 runner: Optional[web.AppRunner] = None  # Global variable to hold the web server runner
+
+
+async def cleanup_auth_connection(auth_id: str) -> None:
+    """Removes an auth connection after the timeout period."""
+    await asyncio.sleep(CONNECTION_CLEANUP_TIMEOUT)  # 3 minutes
+    async with auth_connections_lock:
+        if auth_id in auth_connections:
+            del auth_connections[auth_id]
+            print(f"Cleaned up expired auth connection: {auth_id}")
 
 
 async def create_auth_url(interaction: discord.Interaction) -> str:
@@ -40,6 +51,9 @@ async def create_auth_url(interaction: discord.Interaction) -> str:
     # add the state to the auth_connections dictionary TODO: add
     async with auth_connections_lock:
         auth_connections[auth_id] = interaction
+
+    # Schedule cleanup task
+    asyncio.create_task(cleanup_auth_connection(auth_id))
 
     return auth_url
 
@@ -79,7 +93,7 @@ async def exchange_code_for_token(
     }
 
     try:
-        timeout = aiohttp.ClientTimeout(total=TIMEOUT)
+        timeout = aiohttp.ClientTimeout(total=API_REQUEST_TIMEOUT)
         async with session.post(
             token_url, data=token_payload, headers=headers, timeout=timeout
         ) as response:
@@ -132,7 +146,7 @@ async def get_fenix_user_info(
     headers = {"Authorization": f"Bearer {access_token}"}
 
     try:
-        timeout = aiohttp.ClientTimeout(total=TIMEOUT)
+        timeout = aiohttp.ClientTimeout(total=API_REQUEST_TIMEOUT)
         async with session.get(
             target_url, headers=headers, timeout=timeout
         ) as response:
@@ -243,7 +257,7 @@ async def handle_callback(request: web.Request) -> web.Response:
             result = "Token exchange failed."
             await interaction.user.send(
                 "Failed to authenticate. Please try again. \n\n if the problem persists, contact the server admins.",
-                delete_after=120,
+                delete_after=DEFAULT_MESSAGE_DELETE_DELAY,
             )
             return web.Response(
                 text=html_content1 + result + html_content2, content_type="text/html"
@@ -255,7 +269,7 @@ async def handle_callback(request: web.Request) -> web.Response:
             result = "Failed to fetch user info."
             await interaction.user.send(
                 "Failed to authenticate. Please try again. \n\n if the problem persists, contact the server admins.",
-                delete_after=120,
+                delete_after=DEFAULT_MESSAGE_DELETE_DELAY,
             )
             return web.Response(
                 text=html_content1 + result + html_content2, content_type="text/html"
@@ -275,7 +289,7 @@ async def handle_callback(request: web.Request) -> web.Response:
         except Exception as e:
             print(f"Failed to add IST player to the database: {e}")
             result = f"Failed to add IST player to the database: {e} \n\n If you think this is a mistake, please contact the server admins."
-            await interaction.user.send(result, delete_after=120)
+            await interaction.user.send(result, delete_after=DEFAULT_MESSAGE_DELETE_DELAY)
             return web.Response(
                 text=html_content1 + result + html_content2,
                 content_type="text/html",
@@ -286,7 +300,7 @@ async def handle_callback(request: web.Request) -> web.Response:
     if not guild:
         print("Guild not found. while adding ist auth role.")
         result = "Server not found. Cannot add role. Please contact the server admins."
-        await interaction.user.send(result, delete_after=120)
+        await interaction.user.send(result, delete_after=DEFAULT_MESSAGE_DELETE_DELAY)
         return web.Response(
             text=html_content1 + result + html_content2, content_type="text/html"
         )
@@ -295,7 +309,7 @@ async def handle_callback(request: web.Request) -> web.Response:
     if not role:
         print("Role not found. while adding ist auth role.")
         result = "Role not found. Cannot add role. Please contact the server admins."
-        await interaction.user.send(result, delete_after=120)
+        await interaction.user.send(result, delete_after=DEFAULT_MESSAGE_DELETE_DELAY)
         return web.Response(
             text=html_content1 + result + html_content2, content_type="text/html"
         )
@@ -312,7 +326,7 @@ async def handle_callback(request: web.Request) -> web.Response:
         result = (
             f"Failed to add role to user: {e} \n\n Please contact the server admins."
         )
-        await interaction.user.send(result, delete_after=120)
+        await interaction.user.send(result, delete_after=DEFAULT_MESSAGE_DELETE_DELAY)
         return web.Response(
             text=html_content1 + result + html_content2, content_type="text/html"
         )
@@ -320,7 +334,7 @@ async def handle_callback(request: web.Request) -> web.Response:
     await interaction.user.send(
         "Authentication successful! Welcome to the server!\n\n"
         "Use /link to link your Minecraft account if you want to play on the server.",
-        delete_after=120,
+        delete_after=DEFAULT_MESSAGE_DELETE_DELAY,
     )
 
     # Return the response

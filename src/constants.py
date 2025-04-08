@@ -1,0 +1,2 @@
+# Message constants
+DEFAULT_MESSAGE_DELETE_DELAY = 120
