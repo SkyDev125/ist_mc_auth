@@ -318,7 +318,7 @@ async def handle_callback(request: web.Request) -> web.Response:
         discord_id=str(interaction.user.id),
         minecraft_name=None,
         invited_ids=[],
-        invite_limit=5,
+        invite_limit=MAX_INVITES,
     )
 
     try:
