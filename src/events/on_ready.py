@@ -25,6 +25,7 @@ def setup(bot: Bot) -> None:
             return
         test_guild = discord.Object(id=int(test_guild))
         try:
+            bot.tree.copy_global_to(guild=test_guild)
             synced = await bot.tree.sync(guild=test_guild)
             print(f"✅ Synced {len(synced)} slash commands to guild {test_guild.id}.")
         except Exception as e:

@@ -3,7 +3,7 @@ from typing import TypedDict, List
 class ISTPlayer(TypedDict):
     id: str                     # ist_id
     discord_id: str
-    minecraft_name: str
+    minecraft_name: str | None
     invited_ids: List[str]
     invite_limit: int
 
