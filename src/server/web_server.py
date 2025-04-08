@@ -281,11 +281,47 @@ async def handle_callback(request: web.Request) -> web.Response:
                 content_type="text/html",
             )
 
-        await interaction.user.send(
-            "Authentication successful! Welcome to the server!\n\n"
-            "Use /link to link your Minecraft account if you want to play on the server.",
-            delete_after=120,
+    # Add 1359003671031054458 role to the user
+    guild = interaction.guild
+    if not guild:
+        print("Guild not found. while adding ist auth role.")
+        result = "Server not found. Cannot add role. Please contact the server admins."
+        await interaction.user.send(result, delete_after=120)
+        return web.Response(
+            text=html_content1 + result + html_content2, content_type="text/html"
         )
+
+    role = guild.get_role(1359003671031054458)
+    if not role:
+        print("Role not found. while adding ist auth role.")
+        result = "Role not found. Cannot add role. Please contact the server admins."
+        await interaction.user.send(result, delete_after=120)
+        return web.Response(
+            text=html_content1 + result + html_content2, content_type="text/html"
+        )
+
+    try:
+        if isinstance(interaction.user, discord.Member):
+            await interaction.user.add_roles(role)
+        else:
+            print("Interaction user is not a member of the guild.")
+            result = "User isn't in the server. Please contact the server admins."
+            raise ValueError(result)
+    except Exception as e:
+        print(f"Failed to add role to user: {e}")
+        result = (
+            f"Failed to add role to user: {e} \n\n Please contact the server admins."
+        )
+        await interaction.user.send(result, delete_after=120)
+        return web.Response(
+            text=html_content1 + result + html_content2, content_type="text/html"
+        )
+
+    await interaction.user.send(
+        "Authentication successful! Welcome to the server!\n\n"
+        "Use /link to link your Minecraft account if you want to play on the server.",
+        delete_after=120,
+    )
 
     # Return the response
     return web.Response(
