@@ -352,7 +352,7 @@ async def start_server(bot: commands.Bot) -> None:
     """Starts the AIOHTTP web server."""
     if not FENIX_CLIENT_ID or not FENIX_REDIRECT_URI:
         raise ValueError(
-            "FENIX_CLIENT_ID and FENIX_REDIRECT_URI and IST_PLAYER_ROLE_ID must be set and not None."
+            "FENIX_CLIENT_ID and FENIX_REDIRECT_URI must be set and not None."
         )
 
     app = web.Application()
