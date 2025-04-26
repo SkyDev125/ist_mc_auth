@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 from beartype import beartype
-from src.modals.minecraft import MinecraftUsernameModal
+from src.modals.minecraft import MinecraftAccountLinking
 import src.constants as const
 
 
@@ -24,7 +24,7 @@ def setup(bot: commands.Bot) -> None:
             return
 
         # send modal requesting user's minecraft name
-        modal = MinecraftUsernameModal()
+        modal = MinecraftAccountLinking()
         await interaction.response.send_modal(modal)
 
     _ = link  # Silence unaccessed function warning

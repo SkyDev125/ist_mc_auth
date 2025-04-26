@@ -7,10 +7,7 @@ from src.errors.db import SearchError
 from src.server.requests import *
 from src.db.db import db
 
-# --- The Modal Class Definition ---
-
-
-class MinecraftUsernameModal(ui.Modal, title="Link Minecraft Account"):
+class MinecraftAccountLinking(ui.Modal, title="Link Minecraft Account"):
     # Define the text input field
     # The attribute name (`mc_username`) is how you'll access the value later
     mc_username: ui.TextInput[typing.Self] = ui.TextInput(
