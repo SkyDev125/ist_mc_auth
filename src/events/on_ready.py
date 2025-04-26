@@ -1,8 +1,7 @@
 from discord.ext.commands import Bot
-import discord
 from beartype import beartype
 
-from os import getenv
+import src.constants as const
 
 
 @beartype
@@ -16,20 +15,49 @@ def setup(bot: Bot) -> None:
             print("❌ Bot user is None. Login might have failed.")
         print("------")
 
-        # Sync slash commands to guild
-        test_guild = getenv("GUILD_ID")
-        if test_guild is None:
+        if not const.GUILD_ID:
             print(
                 "⚠️ GUILD_ID environment variable is not set. Skipping slash command sync to guild."
             )
             return
-        test_guild = discord.Object(id=int(test_guild))
+
+        # Check if the guild is valid
+        const.guild = bot.get_guild(int(const.GUILD_ID))
+        if not const.guild:
+            print(f"⚠️ Guild with ID {const.GUILD_ID} not found.")
+            return
+
+        # Sync slash commands to the guild
         try:
-            bot.tree.copy_global_to(guild=test_guild)
-            synced = await bot.tree.sync(guild=test_guild)
-            print(f"✅ Synced {len(synced)} slash commands to guild {test_guild.id}.")
+            bot.tree.copy_global_to(guild=const.guild)
+            synced = await bot.tree.sync(guild=const.guild)
+            print(f"✅ Synced {len(synced)} slash commands to guild {const.guild.id}.")
         except Exception as e:
-            print(f"⚠️ Failed to sync slash commands to guild {test_guild.id}: {e}")
+            print(f"⚠️ Failed to sync slash commands to guild {const.guild.id}: {e}")
+            return
         print("------")
 
-    _ = on_ready  # Silence unaccessed function warning
+        const.ist_player_role = const.guild.get_role(const.IST_PLAYER_ROLE_ID)
+        const.guest_player_role = const.guild.get_role(const.GUEST_PLAYER_ROLE_ID)
+        const.linked_player_role = const.guild.get_role(const.LINKED_PLAYER_ROLE_ID)
+
+        if not const.ist_player_role:
+            print("⚠️ IST_PLAYER_ROLE_ID role not found.")
+
+        if not const.guest_player_role:
+            print("⚠️ GUEST_PLAYER_ROLE_ID role not found.")
+
+        if not const.linked_player_role:
+            print("⚠️ LINKED_PLAYER_ROLE_ID role not found.")
+
+        print(
+            f"✅ Roles verified in guild '{const.guild}': "
+            f"ist_player_role: '{const.ist_player_role}', "
+            f"guest_player_role: '{const.guest_player_role}', "
+            f"linked_player_role: '{const.linked_player_role}'."
+        )
+        print("------")
+        print("Bot is ready!")
+        print("------")
+
+    _ = on_ready  # Silence unaccessed function warni

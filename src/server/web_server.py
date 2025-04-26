@@ -3,7 +3,6 @@ import asyncio
 import os
 import secrets
 
-# import aiohttp
 from aiohttp import web
 import aiohttp
 from beartype import beartype
@@ -11,14 +10,13 @@ from discord.ext import commands
 from typing import Optional
 import discord
 from src.db.db import db
-from src.db.player import ISTPlayer
-from src.constants import *
+from src.db.player import *
+import src.constants as const
 from src.errors.db import *
 
 # --- Configuration (Replace with your actual values, consider using environment variables) ---
 FENIX_CLIENT_ID = os.getenv("FENIX_CLIENT_ID")
 FENIX_CLIENT_SECRET = os.getenv("FENIX_CLIENT_SECRET")
-IST_PLAYER_ROLE_ID = int(os.getenv("IST_PLAYER_ROLE_ID", 0))
 # Make sure this matches the Redirect URL in your FenixEdu application registration
 FENIX_REDIRECT_URI = "http://localhost:8080/callback"
 FENIX_BASE_URL = "https://fenix.tecnico.ulisboa.pt"
@@ -258,7 +256,7 @@ async def handle_callback(request: web.Request) -> web.Response:
             result = "Token exchange failed."
             await interaction.user.send(
                 "Failed to authenticate. Please try again. \n\n if the problem persists, contact the server admins.",
-                delete_after=DEFAULT_MESSAGE_DELETE_DELAY,
+                delete_after=const.DEFAULT_MESSAGE_DELETE_DELAY,
             )
             return web.Response(
                 text=html_content1 + result + html_content2, content_type="text/html"
@@ -270,34 +268,16 @@ async def handle_callback(request: web.Request) -> web.Response:
             result = "Failed to fetch user info."
             await interaction.user.send(
                 "Failed to authenticate. Please try again. \n\n if the problem persists, contact the server admins.",
-                delete_after=DEFAULT_MESSAGE_DELETE_DELAY,
+                delete_after=const.DEFAULT_MESSAGE_DELETE_DELAY,
             )
             return web.Response(
                 text=html_content1 + result + html_content2, content_type="text/html"
             )
 
-    # Add Respective role to the user
-    guild = interaction.guild
-    if not guild:
-        print("Guild not found. while adding ist auth role.")
-        result = "Server not found. Cannot add role. Please contact the server admins."
-        await interaction.user.send(result, delete_after=DEFAULT_MESSAGE_DELETE_DELAY)
-        return web.Response(
-            text=html_content1 + result + html_content2, content_type="text/html"
-        )
-
-    role = guild.get_role(IST_PLAYER_ROLE_ID) if IST_PLAYER_ROLE_ID else None
-    if not role:
-        print("Role not found. while adding ist auth role.")
-        result = "Role not found. Cannot add role. Please contact the server admins."
-        await interaction.user.send(result, delete_after=DEFAULT_MESSAGE_DELETE_DELAY)
-        return web.Response(
-            text=html_content1 + result + html_content2, content_type="text/html"
-        )
-
     try:
         if isinstance(interaction.user, discord.Member):
-            await interaction.user.add_roles(role)
+            assert const.ist_player_role is not None, "IST Player role is None"
+            await interaction.user.add_roles(const.ist_player_role)
         else:
             print("Interaction user is not a member of the guild.")
             result = "User isn't in the server. Please contact the server admins."
@@ -307,7 +287,9 @@ async def handle_callback(request: web.Request) -> web.Response:
         result = (
             f"Failed to add role to user: {e} \n\n Please contact the server admins."
         )
-        await interaction.user.send(result, delete_after=DEFAULT_MESSAGE_DELETE_DELAY)
+        await interaction.user.send(
+            result, delete_after=const.DEFAULT_MESSAGE_DELETE_DELAY
+        )
         return web.Response(
             text=html_content1 + result + html_content2, content_type="text/html"
         )
@@ -318,7 +300,7 @@ async def handle_callback(request: web.Request) -> web.Response:
         discord_id=str(interaction.user.id),
         minecraft_name=None,
         invited_ids=[],
-        invite_limit=MAX_INVITES,
+        invite_limit=const.MAX_INVITES,
     )
 
     try:
@@ -326,9 +308,11 @@ async def handle_callback(request: web.Request) -> web.Response:
     except Exception as e:
         print(f"Failed to add IST player to the database: {e}")
         result = f"Failed to add IST player to the database: {e} \n\n If you think this is a mistake, please contact the server admins."
-        await interaction.user.send(result, delete_after=DEFAULT_MESSAGE_DELETE_DELAY)
+        await interaction.user.send(
+            result, delete_after=const.DEFAULT_MESSAGE_DELETE_DELAY
+        )
         if not isinstance(e, PlayerAlreadyExistsError):
-            await interaction.user.remove_roles(role)
+            await interaction.user.remove_roles(const.ist_player_role)
         return web.Response(
             text=html_content1 + result + html_content2,
             content_type="text/html",
@@ -338,7 +322,7 @@ async def handle_callback(request: web.Request) -> web.Response:
     await interaction.user.send(
         "Authentication successful! Welcome to the server!\n\n"
         "Use /link to link your Minecraft account if you want to play on the server.",
-        delete_after=DEFAULT_MESSAGE_DELETE_DELAY,
+        delete_after=const.DEFAULT_MESSAGE_DELETE_DELAY,
     )
 
     return web.Response(

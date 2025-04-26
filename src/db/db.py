@@ -1,10 +1,10 @@
 import os
 from tinydb import TinyDB, Query
-from typing import cast
+from typing import cast, List
 from src.errors.db import *
-from src.db.player import ISTPlayer, InvitedPlayer
+from src.db.player import *
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "data","players.json")
+DB_PATH = os.path.join(os.path.dirname(__file__), "data", "players.json")
 
 
 class Database:
@@ -20,9 +20,9 @@ class Database:
         self.ist_players = self.db.table(  # pyright: ignore[reportUnknownMemberType]
             "ist_players"
         )
-        self.invited_players = self.db.table(  # pyright: ignore[reportUnknownMemberType]
+        self.invited_players = self.db.table( # pyright: ignore[reportUnknownMemberType]
             "invited_players"
-        ) 
+        )  
 
         # Initialize the query object
         self.query = Query()
@@ -50,7 +50,7 @@ class Database:
             return cast(ISTPlayer, result)
         raise PlayerNotFoundError(ist_id)
 
-    def get_all_ist(self) -> list[ISTPlayer]:
+    def get_all_ist(self) -> List[ISTPlayer]:
         """Get all IST players."""
         results = self.ist_players.all()
         if results:
@@ -96,7 +96,7 @@ class Database:
             return cast(InvitedPlayer, result)
         raise PlayerNotFoundError(invited_id)
 
-    def get_all_invited(self) -> list[InvitedPlayer]:
+    def get_all_invited(self) -> List[InvitedPlayer]:
         """Get all invited players."""
         results = self.invited_players.all()
         if results:
@@ -141,6 +141,61 @@ class Database:
         if results:
             return cast(InvitedPlayer, results[0])
         raise SearchError("discord_id", discord_id)
+
+    # --------------------------
+    # Overarch methods for all players
+    # --------------------------
+
+    def get_all_players(self) -> list[ISTPlayer | InvitedPlayer]:
+        """Get all players from the database."""
+        all_players: list[ISTPlayer | InvitedPlayer] = []
+        try:
+            ist_players: list[ISTPlayer] = self.get_all_ist()
+            all_players.extend(ist_players)
+        except PlayerNotFoundError:
+            pass
+        try:
+            invited_players: list[InvitedPlayer] = self.get_all_invited()
+            all_players.extend(invited_players)
+        except PlayerNotFoundError:
+            pass
+        return all_players
+
+    def get_player(self, player_id: str) -> ISTPlayer | InvitedPlayer:
+        """Get player by ID."""
+        result = self.get_ist(player_id)
+        if result:
+            return result
+        result = self.get_invited(player_id)
+        if result:
+            return result
+        raise PlayerNotFoundError(player_id)
+
+    def update_player(self, player: ISTPlayer | InvitedPlayer) -> None:
+        """Update player in the database."""
+        if is_ist_player(player):
+            self.update_ist(player)
+        elif is_invited_player(player):
+            self.update_invited(player)
+        else:
+            raise PlayerNotFoundError(player["id"])
+
+    def delete_player(self, player_id: str) -> None:
+        """Delete player from the database."""
+
+        # Check for ISTPlayer
+        try:
+            return self.delete_ist(player_id)
+        except PlayerNotFoundError:
+            pass
+
+        # Check for InvitedPlayer
+        try:
+            return self.delete_invited(player_id)
+        except PlayerNotFoundError:
+            pass
+
+        raise PlayerNotFoundError(player_id)
 
 
 # Global instance for import
